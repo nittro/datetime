@@ -1,0 +1,29 @@
+{
+    "name": "nittro-datetime",
+    "homepage": "http://www.nittro.org",
+    "authors": [
+        "Dan Kadera <me@subsonic.cz>"
+    ],
+    "description": "Nittro is a client-side companion for the Nette PHP framework",
+    "repository": {
+        "type": "vcs",
+        "url": "git://github.com/nittro/datetime.git"
+    },
+    "keywords": [
+        "nittro",
+        "nette",
+        "javascript",
+        "ajax"
+    ],
+    "license": "MIT",
+    "dependencies": {
+        "nittro-core": "master"
+    },
+    "ignore": [
+        "**/.*",
+        "node_modules",
+        "bower_components",
+        "test",
+        "tests"
+    ]
+}

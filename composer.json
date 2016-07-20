@@ -1,0 +1,13 @@
+{
+    "name": "nittro/datetime",
+    "description": "JavaScript client-side library to use with the Nette framework",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Dan Kadera",
+            "email": "me@subsonic.cz",
+            "role": "Developer"
+        }
+    ]
+}
