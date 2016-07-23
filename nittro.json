@@ -1,0 +1,11 @@
+{
+    "files": {
+        "js": [
+            "src/js/Utils/DateInterval.js",
+            "src/js/Utils/DateTime.js"
+        ]
+    },
+    "compat": {
+        "es5": true
+    }
+}
