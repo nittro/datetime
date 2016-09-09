@@ -313,7 +313,7 @@ _context.invoke('Utils', function(Strings, Arrays, DateInterval, undefined) {
         }
 
         if (parts[38]) {
-            t += DateInterval.from(parts[38]).getLength();
+            t += DateInterval.from(parts[38], this._.locale).getLength();
         }
 
         this._.date = new Date(t);

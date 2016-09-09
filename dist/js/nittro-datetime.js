@@ -569,7 +569,7 @@ _context.invoke('Utils', function(Strings, Arrays, DateInterval, undefined) {
         }
 
         if (parts[38]) {
-            t += DateInterval.from(parts[38]).getLength();
+            t += DateInterval.from(parts[38], this._.locale).getLength();
         }
 
         this._.date = new Date(t);
@@ -837,8 +837,8 @@ _context.invoke('Utils', function (DateTime) {
             last: 'last',
             'this': 'this',
             next: 'next',
-            firstOf: 'first\\s+of',
-            lastOf: 'last\\s+of',
+            firstOf: 'first(?:\\s+day)?\\s+of',
+            lastOf: 'last(?:\\s+day)?\\s+of',
             year: 'year',
             month: 'month',
             week: 'week',
