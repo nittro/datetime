@@ -1,63 +1,31 @@
-_context.invoke('Utils', function (undefined) {
+_context.invoke('Utils', function (Utils, undefined) {
 
-    var DateInterval = function (interval) {
+    var DateInterval = function (interval, locale) {
         this._ = {
             initialized: false,
-            interval: interval
+            interval: interval,
+            locale: locale || Utils.DateTime.defaultLocale
         };
     };
 
-    DateInterval.from = function (interval) {
-        return new DateInterval(interval);
+    DateInterval.from = function (interval, locale) {
+        return new DateInterval(interval, locale);
 
     };
 
-    var intervalNames = [
-        'year',
-        'month',
-        'week',
-        'day',
-        'hour',
-        'minute',
-        'second',
-        'millisecond'
+    var intervals = [
+        'year', 'month', 'week', 'day', 'hour', 'minute', 'second', 'millisecond'
     ];
 
-    var intervalLengths = [
-        31536000000,
-        604800000,
-        2678400000,
-        86400000,
-        3600000,
-        60000,
-        1000,
-        1
-    ];
-
-    var intervalHelpers = [
-        { pattern: /^y(?:ears?)?$/, toString: function(n) { return n === 1 ? 'year' : 'years' } },
-        { pattern: /^mon(?:ths?)?$/, toString: function(n) { return n === 1 ? 'month' : 'months' } },
-        { pattern: /^w(?:eeks?)?$/, toString: function(n) { return n === 1 ? 'week' : 'weeks' } },
-        { pattern: /^d(?:ays?)?$/, toString: function(n) { return n === 1 ? 'day' : 'days' } },
-        { pattern: /^h(?:ours?)?$/, toString: function(n) { return n === 1 ? 'hour' : 'hours' } },
-        { pattern: /^min(?:utes?)?$/, toString: function(n) { return n === 1 ? 'minute' : 'minutes' } },
-        { pattern: /^s(?:ec(?:onds?)?)?$/, toString: function(n) { return n === 1 ? 'second' : 'seconds' } },
-        { pattern: /^millis(?:econds?)?$|^ms$/, toString: function(n) { return n === 1 ? 'millisecond' : 'milliseconds' } }
-    ];
-
-
-    var separators = [', ', ' and '];
-
-
-    DateInterval.setHelpers = function (helpers) {
-        // @todo check helpers are valid
-        intervalHelpers = helpers;
-
-    };
-
-    DateInterval.setSeparators = function (separator, last) {
-        separators = [separator, last];
-
+    var intervalLengths = {
+        year: 31536000000,
+        month: 2678400000,
+        week: 604800000,
+        day: 86400000,
+        hour: 3600000,
+        minute: 60000,
+        second: 1000,
+        millisecond: 1
     };
 
     function getValue(interval) {
@@ -102,9 +70,9 @@ _context.invoke('Utils', function (undefined) {
     };
 
 
-    function formatAuto(interval, precision) {
+    function formatAuto(interval, precision, locale) {
         if (precision === true) {
-            precision = intervalNames.length;
+            precision = 8;
 
         } else if (!precision) {
             precision = 2;
@@ -119,27 +87,27 @@ _context.invoke('Utils', function (undefined) {
 
         }
 
-        for (i = 0; i < intervalNames.length; i++) {
+        intervals.some(function (i) {
             if (interval >= intervalLengths[i]) {
                 precision--;
                 v = interval / intervalLengths[i];
                 v = precision === 0 ? Math.round(v) : Math.floor(v);
-                str.push(v + ' ' + intervalHelpers[i].toString(v));
+                str.push(v + ' ' + Utils.DateTime.i18n.getInterval(locale, i, v));
                 interval -= v * intervalLengths[i];
 
                 if (precision === 0) {
-                    break;
+                    return true;
 
                 }
             }
-        }
+        });
 
         if (str.length > 2) {
             last = str.pop();
-            return sign + str.join(separators[0]) + (separators[1] || separators[0]) + last;
+            return sign + str.join(', ') + ' ' + Utils.DateTime.i18n.getConjuction(locale) + ' ' + last;
 
         } else {
-            return sign + str.join(separators[1] || separators[0]);
+            return sign + str.join(' ' + Utils.DateTime.i18n.getConjuction(locale) + ' ');
 
         }
     }
@@ -156,41 +124,41 @@ _context.invoke('Utils', function (undefined) {
                     return '%';
 
                 case 'y':
-                    m = intervalLengths[0];
+                    m = intervalLengths.year;
                     break;
 
                 case 'w':
-                    m = intervalLengths[1];
+                    m = intervalLengths.week;
                     break;
 
                 case 'm':
                     pad = true;
                 case 'n':
-                    m = intervalLengths[2];
+                    m = intervalLengths.month;
                     break;
 
                 case 'd':
                     pad = true;
                 case 'j':
-                    m = intervalLengths[3];
+                    m = intervalLengths.day;
                     break;
 
                 case 'H':
                     pad = true;
                 case 'G':
-                    m = intervalLengths[4];
+                    m = intervalLengths.hour;
                     break;
 
                 case 'i':
                     pad = true;
                 case 'I':
-                    m = intervalLengths[5];
+                    m = intervalLengths.minute;
                     break;
 
                 case 's':
                     pad = true;
                 case 'S':
-                    m = intervalLengths[6];
+                    m = intervalLengths.second;
                     break;
 
                 case '-':
@@ -215,7 +183,7 @@ _context.invoke('Utils', function (undefined) {
         this._initialize();
 
         if (typeof pattern === 'boolean' || typeof pattern === 'number' || !pattern) {
-            return formatAuto(this._.interval, pattern);
+            return formatAuto(this._.interval, pattern, this._.locale);
 
         } else {
             return format(this._.interval, pattern);
@@ -246,32 +214,23 @@ _context.invoke('Utils', function (undefined) {
 
             } else {
                 var res = 0,
-                    sign = 1,
                     rest;
 
-                rest = interval.replace(/\s*(\+|-)?\s*(\d+)\s+(\S+)\s*/g, function (m, s, n, k) {
-                    if (s !== undefined) {
-                        sign = s === '+' ? 1 : -1;
+                rest = interval.replace(Utils.DateTime.i18n.getIntervalParser(this._.locale), function (_, sign, n, y, m, w, d, h, i, s, u) {
+                    sign = sign === '-' ? -1 : 1;
 
-                    }
-
-                    k = k.toLowerCase();
                     n = parseInt(n) * sign;
-                    m = null;
 
-                    for (var i = 0; i < intervalHelpers.length; i++) {
-                        if (intervalHelpers[i].pattern.test(k)) {
-                            m = intervalLengths[i];
-                            break;
-                        }
-                    }
+                    y && (n *= intervalLengths.year);
+                    m && (n *= intervalLengths.month);
+                    w && (n *= intervalLengths.week);
+                    d && (n *= intervalLengths.day);
+                    h && (n *= intervalLengths.hour);
+                    i && (n *= intervalLengths.minute);
+                    s && (n *= intervalLengths.second);
+                    u && (n *= intervalLengths.millisecond);
 
-                    if (m === null) {
-                        throw new Error('Unknown keyword: "' + k + '"');
-
-                    }
-
-                    res += n * m;
+                    res += n;
 
                     return '';
 
@@ -297,35 +256,18 @@ _context.invoke('Utils', function (undefined) {
 ;
 _context.invoke('Utils', function(Strings, Arrays, DateInterval, undefined) {
 
-	var DateTime = function(d) {
+	var DateTime = function(d, locale) {
 		this._ = {
 			initialized: false,
-			date: d || new Date()
+			date: d || new Date(),
+            locale: locale || DateTime.defaultLocale
 		};
 	};
 
-    DateTime.keywords = {
-        weekdays: {
-            abbrev: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-            full: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-        },
-        months: {
-            abbrev: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            full: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-        },
-        relative: {
-            now: 'now',
-            today: 'today',
-            tomorrow: 'tomorrow',
-            yesterday: 'yesterday',
-            noon: 'noon',
-            midnight: 'midnight',
-            at: 'at'
-        }
-    };
+	DateTime.defaultLocale = 'en';
 
-	DateTime.from = function(s) {
-		return new DateTime(s);
+	DateTime.from = function(s, locale) {
+		return new DateTime(s, locale);
 
 	};
 
@@ -343,14 +285,14 @@ _context.invoke('Utils', function(Strings, Arrays, DateInterval, undefined) {
 
 	};
 
-    DateTime.isModifyString = function (str) {
-        var kw = DateTime.keywords.relative,
-            re = new RegExp('(?:^(?:' + [kw.now, kw.yesterday, kw.tomorrow, kw.today].map(Strings.escapeRegex).join('|') + '))|' + Strings.escapeRegex(kw.noon) + '|' + Strings.escapeRegex(kw.midnight) + '|\\d?\\d(?::\\d\\d|\\s*(?:am|pm))(?:\\d\\d)?(?:\\s*(?:am|pm))?|(?:[-+]\\s*)?\\d+\\s+[^\\d\\s]', 'i');
-        return re.test(str);
+    DateTime.isModifyString = function (str, locale) {
+        return DateTime.i18n.getParser(locale || DateTime.defaultLocale).test(str);
     };
 
 	DateTime.getDaysInMonth = function(m, y) {
-		return m === 2 ? (DateTime.isLeapYear(y) ? 29 : 28) : (m in {4:1,6:1,9:1,11:1} ? 30 : 31);
+	    while (m < 0) { m += 12; y--; }
+	    while (m > 12) { m -= 12; y++; }
+		return m === 1 ? (DateTime.isLeapYear(y) ? 29 : 28) : (m in {3:1,5:1,8:1,10:1} ? 30 : 31);
 
 	};
 
@@ -381,17 +323,17 @@ _context.invoke('Utils', function(Strings, Arrays, DateInterval, undefined) {
 
 	DateTime.formatModifiers = {
 		d: function(d, u) { return pad(u ? d.getUTCDate() : d.getDate()); },
-		D: function(d, u) { return DateTime.keywords.weekdays.abbrev[u ? d.getUTCDay() : d.getDay()]; },
+		D: function(d, u, o) { return DateTime.i18n.getWeekday(o, u ? d.getUTCDay() : d.getDay(), true); },
 		j: function(d, u) { return u ? d.getUTCDate() : d.getDate(); },
-		l: function(d, u) { return DateTime.keywords.weekdays.full[u ? d.getUTCDay() : d.getDay()]; },
+		l: function(d, u, o) { return DateTime.i18n.getWeekday(o, u ? d.getUTCDay() : d.getDay()); },
 		N: function(d, u, n) { n = u ? d.getUTCDay() : d.getDay(); return n === 0 ? 7 : n; },
 		S: function(d, u, n) { n = u ? d.getUTCDate() : d.getDate(); n %= 10; return n === 0 || n > 3 ? 'th' : ['st', 'nd', 'rd'][n - 1]; },
 		w: function(d, u) { return u ? d.getUTCDay() : d.getDay(); },
 		z: function(d, u, n, m, y, M) { n = u ? d.getUTCDate() : d.getDate(); n--; y = u ? d.getUTCFullYear() : d.getFullYear(); m = 0; M = u ? d.getUTCMonth() : d.getMonth(); while (m < M) n += DateTime.getDaysInMonth(m++, y); return n; },
 		W: ni,
-		F: function(d, u) { return DateTime.keywords.months.full[u ? d.getUTCMonth() : d.getMonth()]; },
+		F: function(d, u, o) { return DateTime.i18n.getMonth(o, u ? d.getUTCMonth() : d.getMonth()); },
 		m: function(d, u) { return pad((u ? d.getUTCMonth() : d.getMonth()) + 1); },
-		M: function(d, u) { return DateTime.keywords.months.abbrev[u ? d.getUTCMonth() : d.getMonth()]; },
+		M: function(d, u, o) { return DateTime.i18n.getMonth(o, u ? d.getUTCMonth() : d.getMonth(), true); },
 		n: function(d, u) { return (u ? d.getUTCMonth() : d.getMonth()) + 1; },
 		t: function(d, u) { return DateTime.getDaysInMonth(u ? d.getUTCMonth() : d.getMonth(), u ? d.getUTCFullYear() : d.getFullYear()); },
 		L: function(d, u) { return DateTime.isLeapYear(u ? d.getUTCFullYear() : d.getFullYear()) ? 1 : 0; },
@@ -421,8 +363,9 @@ _context.invoke('Utils', function(Strings, Arrays, DateInterval, undefined) {
 	DateTime.prototype.format = function(f, utc) {
 		this._initialize();
 
-		var d = this._.date,
-			pattern = Strings.escapeRegex(Arrays.getKeys(DateTime.formatModifiers).join(',')).replace(/,/g, '|'),
+		var date = this._.date,
+            locale = this._.locale,
+			pattern = Arrays.getKeys(DateTime.formatModifiers).map(Strings.escapeRegex).join('|'),
 			re = new RegExp('(\\\\*)(' + pattern + ')', 'g');
 
 		return f.replace(re, function(s, c, m) {
@@ -431,11 +374,24 @@ _context.invoke('Utils', function(Strings, Arrays, DateInterval, undefined) {
 
 			}
 
-			return c + '' + (DateTime.formatModifiers[m](d, utc));
+			return c + '' + (DateTime.formatModifiers[m](date, utc, locale));
 
 		});
-
 	};
+
+	DateTime.prototype.getLocale = function () {
+        return this._.locale;
+    };
+
+	DateTime.prototype.setLocale = function (locale) {
+	    if (!DateTime.i18n.hasLocale(locale)) {
+	        throw new Error('Unknown locale: ' + locale);
+        }
+
+        this._.locale = locale;
+        return this;
+
+    };
 
 	[
         'getTime',
@@ -488,8 +444,9 @@ _context.invoke('Utils', function(Strings, Arrays, DateInterval, undefined) {
 
 	DateTime.prototype.modify = function(s) {
 		this._initialize();
-		var t = this._.date.getTime(), r,
-            re, kw = DateTime.keywords.relative;
+
+        var t = this._.date.getTime(),
+            parts, dt, i, o;
 
         if (s instanceof DateInterval) {
             this._.date = new Date(t + s.getLength());
@@ -497,74 +454,126 @@ _context.invoke('Utils', function(Strings, Arrays, DateInterval, undefined) {
 
         }
 
-		s = s.toLowerCase();
+        parts = DateTime.i18n.getParser(this._.locale).exec(s.toLowerCase());
 
-        re = new RegExp('^(' + [kw.yesterday, kw.tomorrow, kw.now, kw.today].map(Strings.escapeRegex).join('|') + ')\\s*(?:' + Strings.escapeRegex(kw.at) + '\\s*)?');
+        if (!parts) {
+            throw new Error('Invalid interval expression: ' + s);
+        }
 
-		if (r = s.match(re)) {
-			s = s.substr(r[0].length);
+        /**
+         * Parts' indices:
+         *  1: now
+         *  2: yesterday
+         *  3: today
+         *  4: tomorrow
+         *  5: first of
+         *  6: last of
+         *  7: last
+         *  8: this
+         *  9: next
+         * 10: year
+         * 11: month
+         * 12: week
+         * 13: last
+         * 14: this
+         * 15: next
+         * 16-27: months
+         * 28-34: weekdays
+         * 35: noon
+         * 36: midnight
+         * 37: time
+         * 38: relative offset
+         */
 
-			switch (r[1]) {
-				case kw.now:
-				case kw.today:
-					t = Date.now();
-					break;
+        if (parts[1]) {
+            t = Date.now();
 
-				case kw.yesterday:
-					t -= 86400000;
-					break;
+        } else if (parts[2]) {
+            t -= 86400000;
 
-				case kw.tomorrow:
-					t += 86400000;
-					break;
+        } else if (parts[3]) {
+            dt = new Date();
+            dt.setHours(this._.date.getHours(), this._.date.getMinutes(), this._.date.getSeconds(), this._.date.getMilliseconds());
+            t = dt.getTime();
 
-			}
-		}
+        } else if (parts[4]) {
+            t += 86400000;
 
-        re = new RegExp('^(' + Strings.escapeRegex(kw.noon) + '|' + Strings.escapeRegex(kw.midnight) + '|\\d\\d?(?::\\d\\d|\\s*(?:am|pm))(?::\\d\\d)?(?:\\s*(?:am|pm))?)\\s*');
+        } else if (parts[5] || parts[6]) {
+            dt = new Date(t);
+            o = parts[7] ? -1 : (parts[9] ? 1 : 0);
 
-        if (r = s.match(re)) {
-			s = s.substr(r[0].length);
+            if (parts[10]) {
+                dt.setFullYear(dt.getFullYear() + o, parts[5] ? 0 : 11, parts[5] ? 1 : 31);
 
-			t = new Date(t);
+            } else if (parts[11]) {
+                dt.setMonth(dt.getMonth() + o, parts[5] ? 1 : DateTime.getDaysInMonth(dt.getMonth() + o, dt.getFullYear()));
 
-			if (r[1] === kw.noon) {
-				t.setHours(12, 0, 0, 0);
+            } else { // parts[12]
+                dt.setDate(dt.getDate() - dt.getDay() + DateTime.i18n.getWeekStart(this._.locale) + o * 7 + (parts[5] ? 0 : 6));
 
-			} else if (r[1] === kw.midnight) {
-				t.setHours(0, 0, 0, 0);
+            }
 
-			} else {
-				r = r[1].match(/^(\d\d?)(?::(\d\d))?(?::(\d\d))?(?:\s*(am|pm))?$/);
-				r[1] = parseInt(r[1]);
-				r[2] = r[2] ? parseInt(r[2]) : 0;
-				r[3] = r[3] ? parseInt(r[3]) : 0;
+            t = dt.getTime();
 
-				if (r[4]) {
-					if (r[4] === 'am' && r[1] === 12) {
-						r[1] = 0;
+        } else if (parts[13] || parts[14] || parts[15]) {
+            dt = new Date(t);
+            o = parts[13] ? -1 : (parts[15] ? 1 : 0);
 
-					} else if (r[4] === 'pm' && r[1] < 12) {
-						r[1] += 12;
+            for (i = 16; i < 35; i++) {
+                if (parts[i]) {
+                    break;
+                }
+            }
 
-					}
-				}
+            if (i < 28) {
+                i -= 16;
+                dt.setMonth(o * 12 + i, 1);
 
-				t.setHours(r[1], r[2], r[3], 0);
+            } else {
+                i -= 28;
 
-			}
+                if (i < DateTime.i18n.getWeekStart(this._.locale)) {
+                    i += 7;
+                }
 
-			t = t.getTime();
+                dt.setDate(dt.getDate() - dt.getDay() + o * 7 + i);
 
-		}
+            }
 
-        if (s.length && !s.match(/^\s+$/)) {
-            t += DateInterval.from(s).getLength();
+            t = dt.getTime();
 
         }
 
-		this._.date = new Date(t);
-		return this;
+        if (parts[35] || parts[36]) {
+            dt = new Date(t);
+            dt.setHours(parts[36] ? 0 : 12, 0, 0, 0);
+            t = dt.getTime();
+
+        } else if (parts[37]) {
+            dt = new Date(t);
+            o = parts[37].match(/^(\d+)(?::(\d+)(?::(\d+))?)?\s*([ap]m)?/i);
+            o[1] = parseInt(o[1].replace(/^0(\d)$/, '$1'));
+
+            if (o[1] === 12 && o[4] === 'am') {
+                o[1] = 0;
+            } else if (o[1] < 12 && o[4] === 'pm') {
+                o[1] += 12;
+            }
+
+            o[2] = o[2] !== undefined ? parseInt(o[2].replace(/^0(\d)$/, '$1')) : 0;
+            o[3] = o[3] !== undefined ? parseInt(o[3].replace(/^0(\d)$/, '$1')) : 0;
+            dt.setHours(o[1], o[2], o[3], 0);
+            t = dt.getTime();
+
+        }
+
+        if (parts[38]) {
+            t += DateInterval.from(parts[38]).getLength();
+        }
+
+        this._.date = new Date(t);
+        return this;
 
 	};
 
@@ -581,17 +590,17 @@ _context.invoke('Utils', function(Strings, Arrays, DateInterval, undefined) {
 
 		this._.initialized = true;
 
-		if (typeof this._.date === 'string') {
-			var m;
+        var m, s;
 
+		if (typeof this._.date === 'string') {
 			if (m = this._.date.match(/^@(\d+)$/)) {
 				this._.date = new Date(m[1] * 1000);
 
 			} else if (m = this._.date.match(/^(\d\d\d\d-\d\d-\d\d)[ T](\d\d:\d\d(?::\d\d(?:\.\d+)?)?)([-+]\d\d:?\d\d)?$/)) {
 				this._.date = new Date(m[1] + 'T' + m[2] + (m[3] || ''));
 
-			} else if (DateTime.isModifyString(this._.date)) {
-				var s = this._.date;
+			} else if (DateTime.isModifyString(this._.date, this._.locale)) {
+				s = this._.date;
 				this._.date = new Date();
 				this.modify(s);
 
@@ -603,7 +612,7 @@ _context.invoke('Utils', function(Strings, Arrays, DateInterval, undefined) {
 			this._.date = new Date(this._.date);
 
 		} else if (DateTime.isDateObject(this._.date)) {
-			var s = this._.date.date;
+			s = this._.date.date;
 
 			if (this._.date.timezone_type !== 3 || this._.date.timezone === 'UTC') {
 				s += ' ' + this._.date.timezone;
@@ -613,11 +622,237 @@ _context.invoke('Utils', function(Strings, Arrays, DateInterval, undefined) {
 			this._.date = new Date(s);
 
 		} else if (this._.date instanceof DateTime) {
+		    this._.locale = this._.date.getLocale();
 			this._.date = new Date(this._.date.getTime());
 
 		}
 	};
 
     _context.register(DateTime, 'DateTime');
+
+});
+;
+_context.invoke('Utils', function(DateTime, Strings) {
+
+    function buildParser(locale) {
+        var i;
+
+        if (!('months' in locale.parsers)) {
+            locale.parsers.months = [];
+
+            for (i = 0; i < 12; i++) {
+                locale.parsers.months.push(Strings.escapeRegex(locale.keywords.months.full[i]) + '|' + Strings.escapeRegex(locale.keywords.months.abbrev[i]));
+            }
+        }
+
+        if (!('weekdays' in locale.parsers)) {
+            locale.parsers.weekdays = [];
+
+            for (i = 0; i < 7; i++) {
+                locale.parsers.weekdays.push(Strings.escapeRegex(locale.keywords.weekdays.full[i]) + '|' + Strings.escapeRegex(locale.keywords.weekdays.abbrev[i]));
+            }
+        }
+
+        var parts = [
+            '^',
+            '(?:',
+                '(?:',
+                    '(', locale.parsers.now, ')|',
+                    '(', locale.parsers.yesterday, ')|',
+                    '(', locale.parsers.today, ')|',
+                    '(', locale.parsers.tomorrow, ')|',
+                    '(?:',
+                        '(', locale.parsers.firstOf, ')|',
+                        '(', locale.parsers.lastOf, ')',
+                    ')\\s+(?:',
+                        '(', locale.parsers.last, ')|',
+                        '(', locale.parsers['this'], ')|',
+                        '(', locale.parsers.next, ')',
+                    ')\\s+(?:',
+                        '(', locale.parsers.year, ')|',
+                        '(', locale.parsers.month, ')|',
+                        '(', locale.parsers.week, ')',
+                    ')',
+                    '|',
+                    '(?:',
+                        '(', locale.parsers.last, ')|',
+                        '(', locale.parsers['this'], ')|',
+                        '(', locale.parsers.next, ')',
+                    ')\\s+(?:',
+                        '(', locale.parsers.months.join(')|('), ')',
+                        '|',
+                        '(', locale.parsers.weekdays.join(')|('), ')',
+                    ')',
+                ')(?:\\s+|$)',
+            ')?',
+            '(?:',
+                '(?:', locale.parsers.at, '\\s+)?',
+                '(?:',
+                    '(', locale.parsers.noon, ')|',
+                    '(', locale.parsers.midnight, ')|',
+                    '([012]?\\d(?::[0-5]\\d(?::[0-5]\\d)?)?(?:\\s*[ap]m)?)',
+                ')',
+                '(?=[-+]|\\s|$)',
+            ')?',
+            '(',
+                '(?:',
+                    '\\s*[-+]?\\s*\\d+\\s+',
+                    '(?:',
+                        locale.parsers.intervals.year, '|',
+                        locale.parsers.intervals.month, '|',
+                        locale.parsers.intervals.week, '|',
+                        locale.parsers.intervals.day, '|',
+                        locale.parsers.intervals.hour, '|',
+                        locale.parsers.intervals.minute, '|',
+                        locale.parsers.intervals.second, '|',
+                        locale.parsers.intervals.millisecond,
+                    ')',
+                    '(?=[-+]|\\s|$)',
+                ')*',
+            ')',
+            '$'
+        ];
+
+        return new RegExp(parts.join(''), 'i');
+
+    }
+
+    function buildIntervalParser(locale) {
+        var parts = [
+            '\\s*([-+]?)\\s*(\\d+)\\s+',
+            '(?:',
+                '(', locale.parsers.intervals.year, ')|',
+                '(', locale.parsers.intervals.month, ')|',
+                '(', locale.parsers.intervals.week, ')|',
+                '(', locale.parsers.intervals.day, ')|',
+                '(', locale.parsers.intervals.hour, ')|',
+                '(', locale.parsers.intervals.minute, ')|',
+                '(', locale.parsers.intervals.second, ')|',
+                '(', locale.parsers.intervals.millisecond, ')',
+            ')\\s*'
+        ];
+
+        return new RegExp(parts.join(''), 'ig');
+
+    }
+
+    var i18n = DateTime.i18n = {
+        locales: {},
+
+        hasLocale: function(locale) {
+            return locale in i18n.locales;
+        },
+
+        getLocale: function(locale) {
+            if (!i18n.hasLocale(locale)) {
+                throw new Error('Unknown locale: ' + locale);
+            }
+
+            return i18n.locales[locale];
+
+        },
+
+        getMonth: function(locale, m, abbrev) {
+            return i18n.getLocale(locale).keywords.months[abbrev ? 'abbrev' : 'full'][m];
+        },
+
+        getWeekday: function(locale, d, abbrev) {
+            return i18n.getLocale(locale).keywords.weekdays[abbrev ? 'abbrev' : 'full'][d];
+        },
+
+        getConjuction: function(locale) {
+            return i18n.getLocale(locale).keywords.conjuction;
+        },
+
+        getInterval: function(locale, unit, n) {
+            locale = i18n.getLocale(locale);
+            n = locale.getPlural(n);
+            return locale.keywords.intervals[unit][n];
+
+        },
+
+        getWeekStart: function(locale) {
+            return i18n.getLocale(locale).weekStart;
+        },
+
+        getParser: function (locale) {
+            locale = i18n.getLocale(locale);
+
+            if (!locale.parser) {
+                locale.parser = buildParser(locale);
+            }
+
+            return locale.parser;
+
+        },
+
+        getIntervalParser: function(locale) {
+            locale = i18n.getLocale(locale);
+
+            if (!locale.intervalParser) {
+                locale.intervalParser = buildIntervalParser(locale);
+            }
+
+            return locale.intervalParser;
+
+        }
+    };
+
+});
+;
+_context.invoke('Utils', function (DateTime) {
+
+    DateTime.i18n.locales.en = {
+        getPlural: function(n) { return n === 1 ? 0 : 1; },
+        weekStart: 0,
+        keywords: {
+            weekdays: {
+                abbrev: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+                full: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+            },
+            months: {
+                abbrev: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                full: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+            },
+            intervals: {
+                year: ['year', 'years'],
+                month: ['month', 'months'],
+                week: ['week', 'weeks'],
+                day: ['day', 'days'],
+                hour: ['hour', 'hours'],
+                minute: ['minute', 'minutes'],
+                second: ['second', 'seconds'],
+                millisecond: ['millisecond', 'milliseconds']
+            },
+            conjuction: 'and'
+        },
+        parsers: {
+            now: 'now',
+            today: 'today',
+            tomorrow: 'tomorrow',
+            yesterday: 'yesterday',
+            at: 'at',
+            noon: 'noon',
+            midnight: 'midnight',
+            last: 'last',
+            'this': 'this',
+            next: 'next',
+            firstOf: 'first\\s+of',
+            lastOf: 'last\\s+of',
+            year: 'year',
+            month: 'month',
+            week: 'week',
+            intervals: {
+                year: 'y(?:ears?)?',
+                month: 'mon(?:ths?)?',
+                week: 'w(?:eeks?)?',
+                day: 'd(?:ays?)?',
+                hour: 'h(?:ours?)?',
+                minute: 'min(?:utes?)?',
+                second: 's(?:ec(?:onds?)?)?',
+                millisecond: 'millis(?:econds?)?|ms'
+            }
+        }
+    };
 
 });

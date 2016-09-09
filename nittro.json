@@ -2,7 +2,9 @@
     "files": {
         "js": [
             "src/js/Utils/DateInterval.js",
-            "src/js/Utils/DateTime.js"
+            "src/js/Utils/DateTime.js",
+            "src/js/Utils/DateTime.i18n.js",
+            "src/js/Utils/DateTime.en.js"
         ]
     },
     "compat": {

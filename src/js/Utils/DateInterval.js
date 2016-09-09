@@ -1,63 +1,31 @@
-_context.invoke('Utils', function (undefined) {
+_context.invoke('Utils', function (Utils, undefined) {
 
-    var DateInterval = function (interval) {
+    var DateInterval = function (interval, locale) {
         this._ = {
             initialized: false,
-            interval: interval
+            interval: interval,
+            locale: locale || Utils.DateTime.defaultLocale
         };
     };
 
-    DateInterval.from = function (interval) {
-        return new DateInterval(interval);
+    DateInterval.from = function (interval, locale) {
+        return new DateInterval(interval, locale);
 
     };
 
-    var intervalNames = [
-        'year',
-        'month',
-        'week',
-        'day',
-        'hour',
-        'minute',
-        'second',
-        'millisecond'
+    var intervals = [
+        'year', 'month', 'week', 'day', 'hour', 'minute', 'second', 'millisecond'
     ];
 
-    var intervalLengths = [
-        31536000000,
-        604800000,
-        2678400000,
-        86400000,
-        3600000,
-        60000,
-        1000,
-        1
-    ];
-
-    var intervalHelpers = [
-        { pattern: /^y(?:ears?)?$/, toString: function(n) { return n === 1 ? 'year' : 'years' } },
-        { pattern: /^mon(?:ths?)?$/, toString: function(n) { return n === 1 ? 'month' : 'months' } },
-        { pattern: /^w(?:eeks?)?$/, toString: function(n) { return n === 1 ? 'week' : 'weeks' } },
-        { pattern: /^d(?:ays?)?$/, toString: function(n) { return n === 1 ? 'day' : 'days' } },
-        { pattern: /^h(?:ours?)?$/, toString: function(n) { return n === 1 ? 'hour' : 'hours' } },
-        { pattern: /^min(?:utes?)?$/, toString: function(n) { return n === 1 ? 'minute' : 'minutes' } },
-        { pattern: /^s(?:ec(?:onds?)?)?$/, toString: function(n) { return n === 1 ? 'second' : 'seconds' } },
-        { pattern: /^millis(?:econds?)?$|^ms$/, toString: function(n) { return n === 1 ? 'millisecond' : 'milliseconds' } }
-    ];
-
-
-    var separators = [', ', ' and '];
-
-
-    DateInterval.setHelpers = function (helpers) {
-        // @todo check helpers are valid
-        intervalHelpers = helpers;
-
-    };
-
-    DateInterval.setSeparators = function (separator, last) {
-        separators = [separator, last];
-
+    var intervalLengths = {
+        year: 31536000000,
+        month: 2678400000,
+        week: 604800000,
+        day: 86400000,
+        hour: 3600000,
+        minute: 60000,
+        second: 1000,
+        millisecond: 1
     };
 
     function getValue(interval) {
@@ -102,9 +70,9 @@ _context.invoke('Utils', function (undefined) {
     };
 
 
-    function formatAuto(interval, precision) {
+    function formatAuto(interval, precision, locale) {
         if (precision === true) {
-            precision = intervalNames.length;
+            precision = 8;
 
         } else if (!precision) {
             precision = 2;
@@ -119,27 +87,27 @@ _context.invoke('Utils', function (undefined) {
 
         }
 
-        for (i = 0; i < intervalNames.length; i++) {
+        intervals.some(function (i) {
             if (interval >= intervalLengths[i]) {
                 precision--;
                 v = interval / intervalLengths[i];
                 v = precision === 0 ? Math.round(v) : Math.floor(v);
-                str.push(v + ' ' + intervalHelpers[i].toString(v));
+                str.push(v + ' ' + Utils.DateTime.i18n.getInterval(locale, i, v));
                 interval -= v * intervalLengths[i];
 
                 if (precision === 0) {
-                    break;
+                    return true;
 
                 }
             }
-        }
+        });
 
         if (str.length > 2) {
             last = str.pop();
-            return sign + str.join(separators[0]) + (separators[1] || separators[0]) + last;
+            return sign + str.join(', ') + ' ' + Utils.DateTime.i18n.getConjuction(locale) + ' ' + last;
 
         } else {
-            return sign + str.join(separators[1] || separators[0]);
+            return sign + str.join(' ' + Utils.DateTime.i18n.getConjuction(locale) + ' ');
 
         }
     }
@@ -156,41 +124,41 @@ _context.invoke('Utils', function (undefined) {
                     return '%';
 
                 case 'y':
-                    m = intervalLengths[0];
+                    m = intervalLengths.year;
                     break;
 
                 case 'w':
-                    m = intervalLengths[1];
+                    m = intervalLengths.week;
                     break;
 
                 case 'm':
                     pad = true;
                 case 'n':
-                    m = intervalLengths[2];
+                    m = intervalLengths.month;
                     break;
 
                 case 'd':
                     pad = true;
                 case 'j':
-                    m = intervalLengths[3];
+                    m = intervalLengths.day;
                     break;
 
                 case 'H':
                     pad = true;
                 case 'G':
-                    m = intervalLengths[4];
+                    m = intervalLengths.hour;
                     break;
 
                 case 'i':
                     pad = true;
                 case 'I':
-                    m = intervalLengths[5];
+                    m = intervalLengths.minute;
                     break;
 
                 case 's':
                     pad = true;
                 case 'S':
-                    m = intervalLengths[6];
+                    m = intervalLengths.second;
                     break;
 
                 case '-':
@@ -215,7 +183,7 @@ _context.invoke('Utils', function (undefined) {
         this._initialize();
 
         if (typeof pattern === 'boolean' || typeof pattern === 'number' || !pattern) {
-            return formatAuto(this._.interval, pattern);
+            return formatAuto(this._.interval, pattern, this._.locale);
 
         } else {
             return format(this._.interval, pattern);
@@ -246,32 +214,23 @@ _context.invoke('Utils', function (undefined) {
 
             } else {
                 var res = 0,
-                    sign = 1,
                     rest;
 
-                rest = interval.replace(/\s*(\+|-)?\s*(\d+)\s+(\S+)\s*/g, function (m, s, n, k) {
-                    if (s !== undefined) {
-                        sign = s === '+' ? 1 : -1;
+                rest = interval.replace(Utils.DateTime.i18n.getIntervalParser(this._.locale), function (_, sign, n, y, m, w, d, h, i, s, u) {
+                    sign = sign === '-' ? -1 : 1;
 
-                    }
-
-                    k = k.toLowerCase();
                     n = parseInt(n) * sign;
-                    m = null;
 
-                    for (var i = 0; i < intervalHelpers.length; i++) {
-                        if (intervalHelpers[i].pattern.test(k)) {
-                            m = intervalLengths[i];
-                            break;
-                        }
-                    }
+                    y && (n *= intervalLengths.year);
+                    m && (n *= intervalLengths.month);
+                    w && (n *= intervalLengths.week);
+                    d && (n *= intervalLengths.day);
+                    h && (n *= intervalLengths.hour);
+                    i && (n *= intervalLengths.minute);
+                    s && (n *= intervalLengths.second);
+                    u && (n *= intervalLengths.millisecond);
 
-                    if (m === null) {
-                        throw new Error('Unknown keyword: "' + k + '"');
-
-                    }
-
-                    res += n * m;
+                    res += n;
 
                     return '';
 

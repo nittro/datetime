@@ -18,10 +18,10 @@ describe('Utils.DateTime', function () {
 
     describe('getDaysInMonth()', function () {
         it('should return the number of days in a given month of a given year', function () {
-            expect(DateTime.getDaysInMonth(1, 2015)).toBe(31);
-            expect(DateTime.getDaysInMonth(2, 2015)).toBe(28);
-            expect(DateTime.getDaysInMonth(4, 2015)).toBe(30);
-            expect(DateTime.getDaysInMonth(2, 2016)).toBe(29);
+            expect(DateTime.getDaysInMonth(0, 2015)).toBe(31);
+            expect(DateTime.getDaysInMonth(1, 2015)).toBe(28);
+            expect(DateTime.getDaysInMonth(3, 2015)).toBe(30);
+            expect(DateTime.getDaysInMonth(1, 2016)).toBe(29);
         });
     });
 
