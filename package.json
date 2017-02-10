@@ -10,5 +10,8 @@
         "url": "https://github.com/nittro/datetime/issues",
         "email": "nittro@nittro.org"
     },
+    "dependencies": {
+        "nittro-core": "master"
+    },
     "devDependencies": {}
 }
