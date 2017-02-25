@@ -1,26 +1,26 @@
 {
-    "name": "nittro-datetime",
-    "homepage": "https://www.nittro.org",
-    "license": "MIT",
-    "version": "2.0.0-rc.2",
-    "author": "Dan Kadera <me@subsonic.cz>",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/nittro/datetime.git"
-    },
-    "bugs": {
-        "url": "https://github.com/nittro/datetime/issues",
-        "email": "nittro@nittro.org"
-    },
-    "dependencies": {
-        "nittro-core": "^2.0.0"
-    },
-    "devDependencies": {
-        "gulp": "^3.9.1",
-        "gulp-jasmine-browser": "^1.7.1",
-        "phantomjs-prebuilt": "^2.1.14"
-    },
-    "scripts": {
-        "test": "gulp test"
-    }
+  "name": "nittro-datetime",
+  "homepage": "https://www.nittro.org",
+  "license": "MIT",
+  "version": "2.0.0",
+  "author": "Dan Kadera <me@subsonic.cz>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nittro/datetime.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nittro/datetime/issues",
+    "email": "nittro@nittro.org"
+  },
+  "dependencies": {
+    "nittro-core": "^2.0.0"
+  },
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "gulp-jasmine-browser": "^1.7.1",
+    "phantomjs-prebuilt": "^2.1.14"
+  },
+  "scripts": {
+    "test": "gulp test"
+  }
 }
